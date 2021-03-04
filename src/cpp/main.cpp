@@ -8,9 +8,17 @@
 #include <functional>
 #include <chrono>
 #include <algorithm>
+#if __has_include(<execution>)
 #include <execution>
+#endif
 #include <unordered_map>
+#ifndef ARM
 #include <immintrin.h>
+#endif
+#ifdef ANDROID
+#include <jni.h>
+#include <android/log.h>
+#endif
 
 using namespace std;
 
@@ -29,7 +37,11 @@ public:
 	~Timer()
 	{
 		auto ms = chrono::duration_cast<chrono::milliseconds>(chrono::system_clock::now() - _start).count();
+#ifdef ANDROID
+		__android_log_print(ANDROID_LOG_INFO, "change_volume", "%s %d", _prefix.data(), ms);
+#else
 		cout << _prefix << ' ' << ms << " ms." << endl;
+#endif
 	}
 
 private:
@@ -47,7 +59,6 @@ struct FileHandler
 FileHandler read_file(const char *file_path)
 {
 	FileHandler result = { 0 };
-
 	FILE *f = fopen(file_path, "rb");
 	fseek(f, 0, SEEK_END);
 	result.file_size = ftell(f);
@@ -78,7 +89,7 @@ void change_volume_0(FileHandler &file)
 	transform(file.in_file_data, file.in_file_data + file.file_size / sizeof(float), file.out_file_data, change_sample);
 }
 
-#if __cplusplus > 201700L
+#if __cplusplus > 201700L && __has_include(<execution>)
 
 // parallel stl
 void change_volume_1(FileHandler &file)
@@ -125,7 +136,7 @@ void change_volume_5(FileHandler &file)
 unordered_map<int, function<void(FileHandler &)>> funs =
 {
 	{0, change_volume_0},
-#if __cplusplus > 201700L
+#if __cplusplus > 201700L && __has_include(<execution>)
 		{1, change_volume_1},
 		{2, change_volume_2},
 #endif
@@ -162,6 +173,19 @@ int main(int argc, char *argv[])
 	}
 
 	change_volume(argv[1], argv[2], stoi(argv[3]));
+}
+
+#endif
+
+#ifdef ANDROID
+
+extern "C" JNIEXPORT jstring JNICALL
+Java_com_huya_simd_MainActivity_stringFromJNI(
+		JNIEnv* env,
+		jobject /* this */) {
+	std::string hello = std::to_string(__cplusplus);
+	change_volume("/mnt/sdcard/Android/data/com.huya.simd/files/f32le.pcm", "/mnt/sdcard/Android/data/com.huya.simd/files/f32le-0", 0);
+	return env->NewStringUTF(hello.c_str());
 }
 
 #endif
