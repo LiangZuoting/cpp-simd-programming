@@ -89,7 +89,7 @@ void change_volume_0(FileHandler &file)
 	transform(file.in_file_data, file.in_file_data + file.file_size / sizeof(float), file.out_file_data, change_sample);
 }
 
-#if __cplusplus > 201700L && __has_include(<execution>)
+#if __cplusplus > 201700L && __has_include(<execution>) && !defined(ANDROID)
 
 // parallel stl
 void change_volume_1(FileHandler &file)
@@ -136,7 +136,7 @@ void change_volume_5(FileHandler &file)
 unordered_map<int, function<void(FileHandler &)>> funs =
 {
 	{0, change_volume_0},
-#if __cplusplus > 201700L && __has_include(<execution>)
+#if __cplusplus > 201700L && __has_include(<execution>) && !defined(ANDROID)
 		{1, change_volume_1},
 		{2, change_volume_2},
 #endif
@@ -184,7 +184,7 @@ Java_com_huya_simd_MainActivity_stringFromJNI(
 		JNIEnv* env,
 		jobject /* this */) {
 	std::string hello = std::to_string(__cplusplus);
-	change_volume("/mnt/sdcard/Android/data/com.huya.simd/files/f32le.pcm", "/mnt/sdcard/Android/data/com.huya.simd/files/f32le-0", 0);
+	change_volume("/mnt/sdcard/f32le.pcm", "/mnt/sdcard/f32le-0.pcm", 0);
 	return env->NewStringUTF(hello.c_str());
 }
 
