@@ -9,6 +9,7 @@
 |               系统                           | seq | par | par_unseq |
 | :-----------------------------------------: | :---: | :---: | :---: |
 | Windows 10, 16GB RAM, AMD Ryzen 7 1700 8 核 | 139ms | 35ms | 35ms |
+| Windows 10, 16GB RAM, Intel i7-7700 4 核 | 106ms | 33ms | 33ms |
 
 + [AVX](https://software.intel.com/content/www/us/en/develop/articles/introduction-to-intel-advanced-vector-extensions.html)
 + [Neon for Android](https://developer.arm.com/architectures/instruction-sets/simd-isas/neon)
