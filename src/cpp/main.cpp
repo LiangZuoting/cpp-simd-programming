@@ -77,16 +77,19 @@ void write_file(const char *file_path, const FileHandler &file)
 	fclose(f);
 }
 
-float change_sample(float sample)
-{
-	sample *= factor;
-	return sample;
-}
+const float ir[2048] = { 0 };
 
 // sequenced stl
 void change_volume_0(FileHandler &file)
 {
-	transform(file.in_file_data, file.in_file_data + file.file_size / sizeof(float), file.out_file_data, change_sample);
+	int samples = file.file_size / 4;
+	for (int i = 0; i < samples; ++i)
+	{
+		for (int j = 0; j < 2048 && i >= j; ++j) 
+		{
+			file.out_file_data[i] += file.in_file_data[i - j] * ir[j];
+		}
+	}
 }
 
 #if __cplusplus > 201700L && __has_include(<execution>) && !defined(ANDROID)
@@ -94,13 +97,13 @@ void change_volume_0(FileHandler &file)
 // parallel stl
 void change_volume_1(FileHandler &file)
 {
-	transform(execution::par, file.in_file_data, file.in_file_data + file.file_size / sizeof(float), file.out_file_data, change_sample);
+	//transform(execution::par, file.in_file_data, file.in_file_data + file.file_size / sizeof(float), file.out_file_data, change_sample);
 }
 
 // parallel and unsequenced stl
 void change_volume_2(FileHandler &file)
 {
-	transform(execution::par_unseq, file.in_file_data, file.in_file_data + file.file_size / sizeof(float), file.out_file_data, change_sample);
+	//transform(execution::par_unseq, file.in_file_data, file.in_file_data + file.file_size / sizeof(float), file.out_file_data, change_sample);
 }
 
 #endif
@@ -119,7 +122,45 @@ void change_volume_3(FileHandler &file)
 
 void change_volume_4(FileHandler &file)
 {
-
+	int samples = file.file_size / 4;
+	for (int i = 0; i < samples; ++i)
+	{
+		__m256 out = { 0 };
+		for (int j = 0; j < 2048 && i >= j; j += 8) 
+		{
+			__m256 mm256_ir = _mm256_load_ps(ir + j);
+			__m256 in;
+			switch (i - j)
+			{
+			case 0:
+				in = _mm256_setr_ps(file.in_file_data[0], 0, 0, 0, 0, 0, 0, 0);
+				break;
+			case 1:
+				in = _mm256_setr_ps(file.in_file_data[1], file.in_file_data[0], 0, 0, 0, 0, 0, 0);
+				break;
+			case 2:
+				in = _mm256_setr_ps(file.in_file_data[2], file.in_file_data[1], file.in_file_data[0], 0, 0, 0, 0, 0);
+				break;
+			case 3:
+				in = _mm256_setr_ps(file.in_file_data[3], file.in_file_data[2], file.in_file_data[1], file.in_file_data[0], 0, 0, 0, 0);
+				break;
+			case 4:
+				in = _mm256_setr_ps(file.in_file_data[4], file.in_file_data[3], file.in_file_data[2], file.in_file_data[1], file.in_file_data[0], 0, 0, 0);
+				break;
+			case 5:
+				in = _mm256_setr_ps(file.in_file_data[5], file.in_file_data[4], file.in_file_data[3], file.in_file_data[2], file.in_file_data[1], file.in_file_data[0], 0, 0);
+				break;
+			case 6:
+				in = _mm256_setr_ps(file.in_file_data[6], file.in_file_data[5], file.in_file_data[4], file.in_file_data[3], file.in_file_data[2], file.in_file_data[1], file.in_file_data[0], 0);
+				break;
+			default:
+				in = _mm256_setr_ps(file.in_file_data[i - j], file.in_file_data[i - j - 1], file.in_file_data[i - j - 2], file.in_file_data[i - j - 3], file.in_file_data[i - j - 4], file.in_file_data[i - j - 5], file.in_file_data[i - j - 6], file.in_file_data[i - j - 7]);
+				break;
+			}
+			out = _mm256_fmadd_ps(in, mm256_ir, out);
+		}
+		file.out_file_data[i] = out.m256_f32[0] + out.m256_f32[1] + out.m256_f32[2] + out.m256_f32[3] + out.m256_f32[4] + out.m256_f32[5] + out.m256_f32[6] + out.m256_f32[7];
+	}
 }
 
 #endif
