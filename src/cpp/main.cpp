@@ -126,8 +126,11 @@ void change_volume_1(FileHandler &file)
                 break;
             }
             default:
-                float temp[4] = {file.in_file_data[i-j], file.in_file_data[i-j-1], file.in_file_data[i-j-2], file.in_file_data[i-j-3]};
-                in = vld1q_f32(temp);
+//                float temp[4] = {file.in_file_data[i-j], file.in_file_data[i-j-1], file.in_file_data[i-j-2], file.in_file_data[i-j-3]};
+//                in = vld1q_f32(temp);
+                  // 加载再反转比上边注释代码快很多。
+                  in = vld1q_f32(file.in_file_data + i - j - 3);
+                  in = vrev64q_f32(in);
                 break;
 			}
 			out = vmlaq_f32(out, in, ir_x4);
@@ -252,7 +255,7 @@ Java_com_huya_simd_MainActivity_stringFromJNI(
 		JNIEnv* env,
 		jobject /* this */) {
 	std::string hello = std::to_string(__cplusplus);
-	change_volume("/mnt/sdcard/f32le.pcm", "/mnt/sdcard/f32le-0.pcm", 0);
+	change_volume("/mnt/sdcard/f32le.pcm", "/mnt/sdcard/f32le-1.pcm", 1);
 	return env->NewStringUTF(hello.c_str());
 }
 
