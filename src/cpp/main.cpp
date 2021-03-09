@@ -9,7 +9,9 @@
 #include <chrono>
 #include <algorithm>
 #include <unordered_map>
-#ifndef ARM
+#ifdef ARM
+#include <arm_neon.h>
+#else
 #include <immintrin.h>
 #endif
 #ifdef ANDROID
@@ -33,7 +35,7 @@ public:
 	{
 		auto ms = chrono::duration_cast<chrono::milliseconds>(chrono::system_clock::now() - _start).count();
 #ifdef ANDROID
-		__android_log_print(ANDROID_LOG_INFO, "change_volume", "%s %d", _prefix.data(), ms);
+		__android_log_print(ANDROID_LOG_INFO, "change_volume", "%s %d", _prefix.data(), (int)ms);
 #else
 		cout << _prefix << ' ' << ms << " ms." << endl;
 #endif
@@ -94,7 +96,47 @@ void change_volume_0(FileHandler &file)
 // NEON
 void change_volume_1(FileHandler &file)
 {
-
+	size_t samples = file.file_size / 4;
+	size_t ir_samples = sizeof(ir) / 4;
+	for (size_t i = 0; i < samples; ++i)
+	{
+		float32x4_t out = { 0 };
+		for (size_t j = 0; j < ir_samples && i >= j; j += 4)
+		{
+			float32x4_t ir_x4 = vld1q_f32(ir + j);
+			float32x4_t in;
+			switch (i - j)
+			{
+			case 0:
+            {
+                float temp[4] = {file.in_file_data[0], 0, 0, 0};
+                in = vld1q_f32(temp);
+                break;
+            }
+            case 1:
+            {
+                float temp[4] = {file.in_file_data[1], file.in_file_data[0], 0, 0};
+                in = vld1q_f32(temp);
+                break;
+            }
+            case 2:
+            {
+                float temp[4] = {file.in_file_data[2], file.in_file_data[1], file.in_file_data[0], 0};
+                in = vld1q_f32(temp);
+                break;
+            }
+            default:
+                float temp[4] = {file.in_file_data[i-j], file.in_file_data[i-j-1], file.in_file_data[i-j-2], file.in_file_data[i-j-3]};
+                in = vld1q_f32(temp);
+                break;
+			}
+			out = vmlaq_f32(out, in, ir_x4);
+		}
+		file.out_file_data[i] += vgetq_lane_f32(out, 0);
+		file.out_file_data[i] += vgetq_lane_f32(out, 1);
+		file.out_file_data[i] += vgetq_lane_f32(out, 2);
+		file.out_file_data[i] += vgetq_lane_f32(out, 3);
+	}
 }
 
 #endif // ARM
@@ -114,7 +156,7 @@ void change_volume_2(FileHandler &file)
 			__m256 in;
 			switch (i - j)
 			{
-				// _mm256_set_ps 以逆序加载数据，即第一个参数对应 out.m256_f32[7]，最后一个参数对应 out.m256_f32[0]
+				// _mm256_set_ps assign elements values in reverse order, so first argument to out.m256_f32[7] and last argument to out.m256_f32[0]
 			case 0:
 				in = _mm256_set_ps(0, 0, 0, 0, 0, 0, 0, file.in_file_data[0]);
 				break;
