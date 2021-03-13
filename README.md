@@ -25,6 +25,6 @@
 
 |               系统                           | normal       | avx2       | avx512      | neon      |
 | :-----------------------------------------:  | :----------: | :--------: | :---------: | :-------: |
-| Windows 10, 16GB RAM, AMD Ryzen 7 1700 8 核  | NONE         | NONE       | NONE        | NONE      |
+| Windows 10, 16GB RAM, AMD Ryzen 7 1700 8 核  | 17200 ms     | 2896 ms    | NONE        | NONE      |
 | Windows 10, 16GB RAM, Intel i7-7700 4 核     | 12452 ms     | 1285 ms    | NONE        | NONE      |
 | HuaWei Mate 20, 8GB RAM, Kirin 980 8 核      | 5262 ms      | NONE       | NONE        | 2644 ms   |
